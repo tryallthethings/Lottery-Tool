@@ -100,13 +100,24 @@
   .stage-top { display: flex; justify-content: space-between; align-items: center; padding: 16px; gap: 10px; }
   .stage-top .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); color: var(--stage-text); }
   .stage-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; padding: 16px; }
+  /* Width comes from the setting (% of screen width), capped so the box always fits the screen height.
+     Text uses container query units, so it scales exactly with the box. */
   .ticket {
-    width: min(80vw, 560px); aspect-ratio: 16 / 10; border-radius: 28px; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; background: #2c3339; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    --box-w: 60;
+    width: min(calc(var(--box-w) * 1vw), calc((100vh - 240px) * 1.6));
+    container-type: inline-size;
+    aspect-ratio: 16 / 10; border-radius: 5cqw; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 0 5cqw; background: #2c3339; box-shadow: 0 20px 60px rgba(0,0,0,.45);
     transition: background-color .15s ease, color .15s ease;
   }
-  .ticket .t-name { font-size: clamp(1.2rem, 4vw, 2.2rem); font-weight: 650; opacity: .9; }
-  .ticket .t-num { font-size: clamp(4rem, 18vw, 11rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .ticket .t-name { font-size: 6.5cqw; font-weight: 650; opacity: .9; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ticket .t-num { font-size: 30cqw; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .setting { margin-top: 18px; }
+  .setting-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 1rem; }
+  .setting-head output { font-weight: 700; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; max-width: 420px; display: block; margin-top: 6px; accent-color: var(--accent); height: 28px; }
+  input[type=range]:disabled { opacity: .45; }
+  .setting-wrap { max-width: 420px; }
   .ticket.pop { animation: pop .45s cubic-bezier(.2,.9,.3,1.3); }
   @keyframes pop { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
   .draw-btn { font-size: 1.5rem; padding: 18px 56px; border-radius: 999px; }
@@ -149,6 +160,14 @@
       <div class="stat"><span class="muted" data-i18n="drawn"></span><b id="statDrawn">0</b></div>
     </div>
     <label class="toggle"><input type="checkbox" id="animToggle"> <span data-i18n="animation"></span></label>
+    <div class="setting setting-wrap">
+      <div class="setting-head"><label for="animLen" style="margin:0;font-size:1rem;color:var(--text);font-weight:500" data-i18n="animLength"></label><output id="animLenOut"></output></div>
+      <input type="range" id="animLen" min="0.5" max="10" step="0.5">
+    </div>
+    <div class="setting setting-wrap">
+      <div class="setting-head"><label for="boxWidth" style="margin:0;font-size:1rem;color:var(--text);font-weight:500" data-i18n="boxWidth"></label><output id="boxWidthOut"></output></div>
+      <input type="range" id="boxWidth" min="30" max="95" step="5">
+    </div>
     <div class="actions">
       <button class="btn primary" id="openStage" type="button" data-i18n="openDraw"></button>
     </div>
@@ -186,14 +205,13 @@
 <script>
 (() => {
   const STORAGE_KEY = 'lottery-draw-app-v1';
-  const ANIM_MS = 1500;
-
+  
   const I18N = {
     de: {
       title: 'Losziehung', setup: 'Lose einrichten', addColor: '+ Farbe hinzufügen',
       color: 'Farbe', name: 'Name', from: 'Von', to: 'Bis', remove: 'Entfernen',
       namePh: 'z. B. Rot', total: 'Lose gesamt', remaining: 'Verbleibend', drawn: 'Gezogen',
-      animation: 'Zieh-Animation anzeigen', openDraw: 'Ziehung öffnen', history: 'Bisherige Ziehungen',
+      animation: 'Zieh-Animation anzeigen', animLength: 'Dauer der Animation', boxWidth: 'Breite des Loses (% der Bildschirmbreite)', sec: v => `${v.toLocaleString('de')} s`, openDraw: 'Ziehung öffnen', history: 'Bisherige Ziehungen',
       historyEmpty: 'Noch keine Lose gezogen.', undo: 'Letzte Ziehung rückgängig', reset: 'Pool zurücksetzen',
       close: '← Zurück', fullscreen: 'Vollbild', exitFullscreen: 'Vollbild beenden', drawBtn: 'Los ziehen',
       left: n => `${n} Lose verbleibend`, empty: 'Alle Lose wurden gezogen.',
@@ -208,7 +226,7 @@
       title: 'Lottery Draw', setup: 'Ticket setup', addColor: '+ Add color',
       color: 'Color', name: 'Name', from: 'From', to: 'To', remove: 'Remove',
       namePh: 'e.g. Red', total: 'Total tickets', remaining: 'Remaining', drawn: 'Drawn',
-      animation: 'Show draw animation', openDraw: 'Open draw screen', history: 'Draw history',
+      animation: 'Show draw animation', animLength: 'Animation length', boxWidth: 'Ticket width (% of screen width)', sec: v => `${v.toLocaleString('en')} s`, openDraw: 'Open draw screen', history: 'Draw history',
       historyEmpty: 'No tickets drawn yet.', undo: 'Undo last draw', reset: 'Reset pool',
       close: '← Back', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', drawBtn: 'Draw ticket',
       left: n => `${n} tickets remaining`, empty: 'All tickets have been drawn.',
@@ -228,6 +246,8 @@
   let state = {
     lang: null,
     animate: true,
+    animSec: 1.5,
+    boxWidth: 60,
     colors: [{ id: uid(), name: '', hex: '#c96a5a', from: 1, to: 100 }],
     drawn: [] // { colorId, name, hex, num }
   };
@@ -241,6 +261,9 @@
         if (s && Array.isArray(s.colors) && Array.isArray(s.drawn)) state = Object.assign(state, s);
       }
     } catch (e) { storageOk = false; }
+    const clamp = (v, lo, hi, d) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
+    state.animSec = clamp(Number(state.animSec), 0.5, 10, 1.5);
+    state.boxWidth = clamp(Number(state.boxWidth), 30, 95, 60);
     if (!state.lang) {
       const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
       state.lang = nav.toLowerCase().startsWith('de') ? 'de' : 'en';
@@ -384,6 +407,10 @@
     $('undoBtn').disabled = $('stageUndo').disabled = s.drawn === 0;
     $('resetBtn').disabled = s.drawn === 0;
     $('animToggle').checked = state.animate;
+    $('animLen').value = state.animSec; $('animLen').disabled = !state.animate;
+    $('animLenOut').textContent = t('sec')(state.animSec);
+    $('boxWidth').value = state.boxWidth; $('boxWidthOut').textContent = state.boxWidth + ' %';
+    $('ticket').style.setProperty('--box-w', state.boxWidth);
     $('stageInfo').textContent = s.remaining ? t('left')(s.remaining.toLocaleString(state.lang)) : t('empty');
     if (!animating) $('drawBtn').disabled = s.remaining === 0;
   }
@@ -431,14 +458,15 @@
     };
     if (!state.animate) return finish();
     animating = true;
+    const animMs = state.animSec * 1000;
     $('drawBtn').disabled = true;
     const start = performance.now();
     const tick = () => {
       const elapsed = performance.now() - start;
-      if (elapsed >= ANIM_MS) return finish();
+      if (elapsed >= animMs) return finish();
       showTicket(randomRemainingPreview() || result, false);
       // slow down towards the end
-      setTimeout(tick, 50 + (elapsed / ANIM_MS) * 180);
+      setTimeout(tick, 50 + (elapsed / animMs) * 180);
     };
     tick();
   }
@@ -499,7 +527,9 @@
     const inputs = document.querySelectorAll('#rows [data-f="name"]');
     inputs[inputs.length - 1].focus();
   });
-  $('animToggle').addEventListener('change', e => { state.animate = e.target.checked; save(); });
+  $('animToggle').addEventListener('change', e => { state.animate = e.target.checked; save(); renderStats(); });
+  $('animLen').addEventListener('input', e => { state.animSec = Number(e.target.value); save(); renderStats(); });
+  $('boxWidth').addEventListener('input', e => { state.boxWidth = Number(e.target.value); save(); renderStats(); });
   $('openStage').addEventListener('click', openStage);
   $('closeStage').addEventListener('click', closeStage);
   $('fsBtn').addEventListener('click', toggleFullscreen);
