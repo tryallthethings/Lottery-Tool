@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lottery Draw</title>
+<meta name="color-scheme" content="light dark">
+<style>
+  :root {
+    --bg: #f4f1ec;
+    --surface: #fffdfa;
+    --surface-2: #f0ebe3;
+    --border: #ddd5c9;
+    --text: #2b2a28;
+    --muted: #6b665e;
+    --accent: #3f6e6a;
+    --accent-hover: #345c58;
+    --accent-text: #ffffff;
+    --danger: #a4493d;
+    --stage-bg: #1f2428;
+    --stage-text: #e9e6e1;
+    --stage-muted: #9aa3a8;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 4px 16px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c2024;
+      --surface: #252a2f;
+      --surface-2: #2d3339;
+      --border: #3a4148;
+      --text: #e6e3de;
+      --muted: #a3a9ad;
+      --accent: #6fa8a2;
+      --accent-hover: #82b8b2;
+      --accent-text: #13201f;
+      --danger: #d98476;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 18px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
+  h1 { font-size: 1.75rem; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 1.2rem; margin: 0 0 12px; font-weight: 650; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px; }
+  .muted { color: var(--muted); }
+  .lang { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .lang button { border: 0; background: transparent; color: var(--muted); padding: 6px 14px; font: inherit; font-size: .9rem; font-weight: 600; cursor: pointer; }
+  .lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+
+  .row { display: grid; grid-template-columns: 48px 1fr 96px 96px 44px; gap: 10px; align-items: end; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .row:last-of-type { border-bottom: 0; }
+  label { display: block; font-size: .8rem; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  input[type=text], input[type=number] {
+    width: 100%; font: inherit; font-size: 1rem; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font-variant-numeric: tabular-nums;
+  }
+  input:focus-visible, button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+  input[type=color] { width: 48px; height: 44px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); cursor: pointer; }
+  input:disabled { opacity: .6; cursor: not-allowed; }
+  .invalid { border-color: var(--danger) !important; }
+
+  .btn { font: inherit; font-size: 1rem; font-weight: 600; border-radius: 10px; padding: 10px 18px; cursor: pointer; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); }
+  .btn:hover:not(:disabled) { filter: brightness(0.97); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-hover); filter: none; }
+  .btn.danger { color: var(--danger); }
+  .icon-btn { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; font-size: 1.3rem; line-height: 1; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .notice { background: var(--surface-2); border-radius: 10px; padding: 10px 14px; font-size: .95rem; color: var(--muted); margin-bottom: 12px; }
+  .error { color: var(--danger); font-size: .95rem; margin-top: 8px; min-height: 1.4em; }
+
+  .stats { display: flex; gap: 28px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat b { display: block; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+  .toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 1rem; }
+  .toggle input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+  .history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow: auto; }
+  .history li { display: flex; align-items: center; gap: 12px; padding: 6px 4px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  .history .idx { color: var(--muted); width: 3ch; text-align: right; font-size: .9rem; }
+  .chip { display: inline-flex; align-items: center; justify-content: center; min-width: 64px; padding: 2px 10px; border-radius: 8px; font-weight: 700; }
+
+  /* Draw stage */
+  .stage { position: fixed; inset: 0; background: var(--stage-bg); color: var(--stage-text); display: none; flex-direction: column; z-index: 10; }
+  .stage.open { display: flex; }
+  .stage-top { display: flex; justify-content: space-between; align-items: center; padding: 16px; gap: 10px; }
+  .stage-top .btn { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); color: var(--stage-text); }
+  .stage-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 36px; padding: 16px; }
+  .ticket {
+    width: min(80vw, 560px); aspect-ratio: 16 / 10; border-radius: 28px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: #2c3339; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .ticket .t-name { font-size: clamp(1.2rem, 4vw, 2.2rem); font-weight: 650; opacity: .9; }
+  .ticket .t-num { font-size: clamp(4rem, 18vw, 11rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .ticket.pop { animation: pop .45s cubic-bezier(.2,.9,.3,1.3); }
+  @keyframes pop { 0% { transform: scale(.9); } 100% { transform: scale(1); } }
+  .draw-btn { font-size: 1.5rem; padding: 18px 56px; border-radius: 999px; }
+  .stage-info { color: var(--stage-muted); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 600px) {
+    .row { grid-template-columns: 48px 1fr 1fr 44px; }
+    .row .f-name { grid-column: 2 / 4; grid-row: 1; }
+    .row .f-del { grid-column: 4; grid-row: 1; }
+    .row .f-from { grid-column: 1 / 3; grid-row: 2; }
+    .row .f-to { grid-column: 3 / 5; grid-row: 2; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ticket.pop { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 data-i18n="title"></h1>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-lang="de">DE</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+  </header>
+
+  <section class="card">
+    <h2 data-i18n="setup"></h2>
+    <div id="lockNotice" class="notice" hidden data-i18n="locked"></div>
+    <div id="rows"></div>
+    <div class="error" id="setupError" role="alert"></div>
+    <div class="actions">
+      <button class="btn" id="addColor" type="button" data-i18n="addColor"></button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="stats">
+      <div class="stat"><span class="muted" data-i18n="total"></span><b id="statTotal">0</b></div>
+      <div class="stat"><span class="muted" data-i18n="remaining"></span><b id="statRemaining">0</b></div>
+      <div class="stat"><span class="muted" data-i18n="drawn"></span><b id="statDrawn">0</b></div>
+    </div>
+    <label class="toggle"><input type="checkbox" id="animToggle"> <span data-i18n="animation"></span></label>
+    <div class="actions">
+      <button class="btn primary" id="openStage" type="button" data-i18n="openDraw"></button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="history"></h2>
+    <p class="muted" id="historyEmpty" data-i18n="historyEmpty"></p>
+    <ol class="history" id="history"></ol>
+    <div class="actions">
+      <button class="btn" id="undoBtn" type="button" data-i18n="undo"></button>
+      <button class="btn danger" id="resetBtn" type="button" data-i18n="reset"></button>
+    </div>
+  </section>
+</div>
+
+<div class="stage" id="stage" role="dialog" aria-modal="true">
+  <div class="stage-top">
+    <button class="btn" id="closeStage" type="button" data-i18n="close"></button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn" id="stageUndo" type="button" data-i18n="undo"></button>
+      <button class="btn" id="fsBtn" type="button" data-i18n="fullscreen"></button>
+    </div>
+  </div>
+  <div class="stage-center">
+    <div class="ticket" id="ticket" aria-live="polite">
+      <div class="t-name" id="tName"></div>
+      <div class="t-num" id="tNum">?</div>
+    </div>
+    <button class="btn primary draw-btn" id="drawBtn" type="button" data-i18n="drawBtn"></button>
+    <div class="stage-info" id="stageInfo"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const STORAGE_KEY = 'lottery-draw-app-v1';
+  const ANIM_MS = 1500;
+
+  const I18N = {
+    de: {
+      title: 'Losziehung', setup: 'Lose einrichten', addColor: '+ Farbe hinzufügen',
+      color: 'Farbe', name: 'Name', from: 'Von', to: 'Bis', remove: 'Entfernen',
+      namePh: 'z. B. Rot', total: 'Lose gesamt', remaining: 'Verbleibend', drawn: 'Gezogen',
+      animation: 'Zieh-Animation anzeigen', openDraw: 'Ziehung öffnen', history: 'Bisherige Ziehungen',
+      historyEmpty: 'Noch keine Lose gezogen.', undo: 'Letzte Ziehung rückgängig', reset: 'Pool zurücksetzen',
+      close: '← Zurück', fullscreen: 'Vollbild', exitFullscreen: 'Vollbild beenden', drawBtn: 'Los ziehen',
+      left: n => `${n} Lose verbleibend`, empty: 'Alle Lose wurden gezogen.',
+      locked: 'Es wurden bereits Lose gezogen. Setze den Pool zurück, um die Einrichtung zu ändern.',
+      confirmReset: 'Wirklich alle Ziehungen löschen und den Pool zurücksetzen?',
+      confirmUndo: t => `Ziehung „${t}“ rückgängig machen und zurück in den Pool legen?`,
+      errName: 'Jede Farbe braucht einen Namen.', errRange: '„Von“ und „Bis“ müssen ganze Zahlen sein, „Von“ ≤ „Bis“.',
+      errNone: 'Lege mindestens eine gültige Farbe an.', errDup: 'Farbnamen müssen eindeutig sein.',
+      storageFail: 'Hinweis: Der Browser erlaubt kein Speichern. Der Stand geht beim Schließen verloren.'
+    },
+    en: {
+      title: 'Lottery Draw', setup: 'Ticket setup', addColor: '+ Add color',
+      color: 'Color', name: 'Name', from: 'From', to: 'To', remove: 'Remove',
+      namePh: 'e.g. Red', total: 'Total tickets', remaining: 'Remaining', drawn: 'Drawn',
+      animation: 'Show draw animation', openDraw: 'Open draw screen', history: 'Draw history',
+      historyEmpty: 'No tickets drawn yet.', undo: 'Undo last draw', reset: 'Reset pool',
+      close: '← Back', fullscreen: 'Fullscreen', exitFullscreen: 'Exit fullscreen', drawBtn: 'Draw ticket',
+      left: n => `${n} tickets remaining`, empty: 'All tickets have been drawn.',
+      locked: 'Tickets have already been drawn. Reset the pool to change the setup.',
+      confirmReset: 'Really delete all draws and reset the pool?',
+      confirmUndo: t => `Undo draw "${t}" and put it back into the pool?`,
+      errName: 'Every color needs a name.', errRange: '"From" and "To" must be whole numbers, with "From" ≤ "To".',
+      errNone: 'Add at least one valid color.', errDup: 'Color names must be unique.',
+      storageFail: 'Note: this browser does not allow saving. Progress will be lost when it closes.'
+    }
+  };
+
+  const $ = id => document.getElementById(id);
+  const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+
+  // ---------- State ----------
+  let state = {
+    lang: null,
+    animate: true,
+    colors: [{ id: uid(), name: '', hex: '#c96a5a', from: 1, to: 100 }],
+    drawn: [] // { colorId, name, hex, num }
+  };
+  let storageOk = true;
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && Array.isArray(s.colors) && Array.isArray(s.drawn)) state = Object.assign(state, s);
+      }
+    } catch (e) { storageOk = false; }
+    if (!state.lang) {
+      const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'en';
+      state.lang = nav.toLowerCase().startsWith('de') ? 'de' : 'en';
+    }
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); storageOk = true; }
+    catch (e) { storageOk = false; }
+  }
+  const t = k => I18N[state.lang][k];
+
+  // ---------- Helpers ----------
+  function textColorFor(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return '#111';
+    const n = parseInt(m[1], 16);
+    const lin = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+    return L > 0.4 ? '#17191b' : '#ffffff';
+  }
+  // Unbiased random integer in [0, n) using the Web Crypto API
+  function randInt(n) {
+    const limit = Math.floor(0x100000000 / n) * n;
+    const buf = new Uint32Array(1);
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
+  const isInt = v => Number.isInteger(v);
+  function validColor(c) { return c.name.trim() && isInt(c.from) && isInt(c.to) && c.from <= c.to; }
+  function validColors() { return state.colors.filter(validColor); }
+  function drawnSetFor(colorId) {
+    const s = new Set();
+    for (const d of state.drawn) if (d.colorId === colorId) s.add(d.num);
+    return s;
+  }
+  function remainingFor(c) { return (c.to - c.from + 1) - drawnSetFor(c.id).size; }
+  function totals() {
+    const cs = validColors();
+    const total = cs.reduce((a, c) => a + (c.to - c.from + 1), 0);
+    const remaining = cs.reduce((a, c) => a + remainingFor(c), 0);
+    return { total, remaining, drawn: state.drawn.length };
+  }
+
+  // Every remaining ticket (across all colors) has the same chance.
+  function pickTicket() {
+    const cs = validColors();
+    const counts = cs.map(remainingFor);
+    const sum = counts.reduce((a, b) => a + b, 0);
+    if (sum === 0) return null;
+    let k = randInt(sum);
+    let ci = 0;
+    while (k >= counts[ci]) { k -= counts[ci]; ci++; }
+    const c = cs[ci];
+    const used = drawnSetFor(c.id);
+    for (let n = c.from; n <= c.to; n++) {
+      if (used.has(n)) continue;
+      if (k === 0) return { colorId: c.id, name: c.name.trim(), hex: c.hex, num: n };
+      k--;
+    }
+    return null;
+  }
+  function randomRemainingPreview() {
+    const cs = validColors().filter(c => remainingFor(c) > 0);
+    if (!cs.length) return null;
+    const c = cs[randInt(cs.length)];
+    return { name: c.name.trim(), hex: c.hex, num: c.from + randInt(c.to - c.from + 1) };
+  }
+
+  // ---------- Rendering ----------
+  function applyI18n() {
+    document.documentElement.lang = state.lang;
+    document.title = t('title');
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === state.lang)));
+    updateFsLabel();
+  }
+
+  function renderRows() {
+    const locked = state.drawn.length > 0;
+    $('lockNotice').hidden = !locked;
+    $('addColor').disabled = locked;
+    const wrap = $('rows');
+    wrap.innerHTML = '';
+    state.colors.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `
+        <div><label>${t('color')}</label><input type="color" data-f="hex"></div>
+        <div class="f-name"><label>${t('name')}</label><input type="text" data-f="name" maxlength="40" placeholder="${t('namePh')}"></div>
+        <div class="f-from"><label>${t('from')}</label><input type="number" data-f="from" step="1" inputmode="numeric"></div>
+        <div class="f-to"><label>${t('to')}</label><input type="number" data-f="to" step="1" inputmode="numeric"></div>
+        <div class="f-del"><button class="btn icon-btn danger" type="button" aria-label="${t('remove')}" title="${t('remove')}">×</button></div>`;
+      const q = f => row.querySelector(`[data-f="${f}"]`);
+      q('hex').value = c.hex; q('name').value = c.name; q('from').value = c.from; q('to').value = c.to;
+      row.querySelectorAll('input').forEach(i => i.disabled = locked);
+      row.querySelector('button').disabled = locked || state.colors.length <= 1;
+      q('hex').addEventListener('input', e => { c.hex = e.target.value; commit(); });
+      q('name').addEventListener('input', e => { c.name = e.target.value; commit(); });
+      q('from').addEventListener('input', e => { c.from = e.target.value === '' ? NaN : Number(e.target.value); commit(); });
+      q('to').addEventListener('input', e => { c.to = e.target.value === '' ? NaN : Number(e.target.value); commit(); });
+      row.querySelector('button').addEventListener('click', () => {
+        state.colors = state.colors.filter(x => x !== c); commit(); renderRows();
+      });
+      row._color = c;
+      wrap.appendChild(row);
+    });
+    markInvalid();
+  }
+
+  function validationError() {
+    const names = new Set();
+    for (const c of state.colors) {
+      if (!c.name.trim()) return t('errName');
+      if (!(isInt(c.from) && isInt(c.to) && c.from <= c.to)) return t('errRange');
+      const key = c.name.trim().toLowerCase();
+      if (names.has(key)) return t('errDup');
+      names.add(key);
+    }
+    return validColors().length ? '' : t('errNone');
+  }
+
+  function markInvalid() {
+    document.querySelectorAll('#rows .row').forEach(row => {
+      const c = row._color;
+      row.querySelector('[data-f="name"]').classList.toggle('invalid', !c.name.trim());
+      const rangeBad = !(isInt(c.from) && isInt(c.to) && c.from <= c.to);
+      row.querySelector('[data-f="from"]').classList.toggle('invalid', rangeBad);
+      row.querySelector('[data-f="to"]').classList.toggle('invalid', rangeBad);
+    });
+    const err = validationError();
+    $('setupError').textContent = err || (storageOk ? '' : t('storageFail'));
+    return !err;
+  }
+
+  function renderStats() {
+    const s = totals();
+    $('statTotal').textContent = s.total.toLocaleString(state.lang);
+    $('statRemaining').textContent = s.remaining.toLocaleString(state.lang);
+    $('statDrawn').textContent = s.drawn.toLocaleString(state.lang);
+    $('openStage').disabled = !!validationError();
+    $('undoBtn').disabled = $('stageUndo').disabled = s.drawn === 0;
+    $('resetBtn').disabled = s.drawn === 0;
+    $('animToggle').checked = state.animate;
+    $('stageInfo').textContent = s.remaining ? t('left')(s.remaining.toLocaleString(state.lang)) : t('empty');
+    if (!animating) $('drawBtn').disabled = s.remaining === 0;
+  }
+
+  function renderHistory() {
+    const list = $('history');
+    list.innerHTML = '';
+    $('historyEmpty').hidden = state.drawn.length > 0;
+    for (let i = state.drawn.length - 1; i >= 0; i--) {
+      const d = state.drawn[i];
+      const li = document.createElement('li');
+      const idx = document.createElement('span'); idx.className = 'idx'; idx.textContent = (i + 1) + '.';
+      const chip = document.createElement('span'); chip.className = 'chip';
+      chip.style.background = d.hex; chip.style.color = textColorFor(d.hex); chip.textContent = d.num;
+      const name = document.createElement('span'); name.textContent = d.name;
+      li.append(idx, chip, name);
+      list.appendChild(li);
+    }
+  }
+
+  function showTicket(tk, pop) {
+    const el = $('ticket');
+    if (!tk) { el.style.background = ''; el.style.color = ''; $('tName').textContent = ''; $('tNum').textContent = '?'; return; }
+    el.style.background = tk.hex; el.style.color = textColorFor(tk.hex);
+    $('tName').textContent = tk.name; $('tNum').textContent = tk.num;
+    if (pop) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  }
+
+  function commit() { save(); markInvalid(); renderStats(); }
+  function renderAll() { applyI18n(); renderRows(); renderStats(); renderHistory(); }
+
+  // ---------- Actions ----------
+  let animating = false;
+  function draw() {
+    if (animating) return;
+    const result = pickTicket();
+    if (!result) return renderStats();
+    state.drawn.push(result);
+    save();
+    const finish = () => {
+      animating = false;
+      showTicket(result, true);
+      renderStats(); renderHistory(); renderRows();
+      $('drawBtn').focus();
+    };
+    if (!state.animate) return finish();
+    animating = true;
+    $('drawBtn').disabled = true;
+    const start = performance.now();
+    const tick = () => {
+      const elapsed = performance.now() - start;
+      if (elapsed >= ANIM_MS) return finish();
+      showTicket(randomRemainingPreview() || result, false);
+      // slow down towards the end
+      setTimeout(tick, 50 + (elapsed / ANIM_MS) * 180);
+    };
+    tick();
+  }
+
+  function undo() {
+    if (animating || !state.drawn.length) return;
+    const last = state.drawn[state.drawn.length - 1];
+    if (!confirm(t('confirmUndo')(`${last.name} ${last.num}`))) return;
+    state.drawn.pop(); save();
+    showTicket(null);
+    renderRows(); renderStats(); renderHistory();
+  }
+
+  function reset() {
+    if (animating || !state.drawn.length) return;
+    if (!confirm(t('confirmReset'))) return;
+    state.drawn = []; save();
+    showTicket(null);
+    renderRows(); renderStats(); renderHistory();
+  }
+
+  // ---------- Stage & fullscreen ----------
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  function updateFsLabel() { $('fsBtn').textContent = fsElement() ? t('exitFullscreen') : t('fullscreen'); }
+  function toggleFullscreen() {
+    const st = $('stage');
+    if (fsElement()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      const req = st.requestFullscreen || st.webkitRequestFullscreen;
+      if (req) { const p = req.call(st); if (p && p.catch) p.catch(() => {}); }
+    }
+  }
+  function openStage() {
+    if (validationError()) return;
+    $('stage').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    const last = state.drawn[state.drawn.length - 1];
+    showTicket(last || null);
+    renderStats();
+    $('drawBtn').focus();
+  }
+  function closeStage() {
+    if (fsElement()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    $('stage').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  // Hide fullscreen button where the API isn't available (e.g. iPhone Safari)
+  if (!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen)) $('fsBtn').hidden = true;
+
+  // ---------- Events ----------
+  document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', () => {
+    state.lang = b.dataset.lang; save(); renderAll();
+  }));
+  $('addColor').addEventListener('click', () => {
+    state.colors.push({ id: uid(), name: '', hex: '#5a86b5', from: 1, to: 100 });
+    commit(); renderRows();
+    const inputs = document.querySelectorAll('#rows [data-f="name"]');
+    inputs[inputs.length - 1].focus();
+  });
+  $('animToggle').addEventListener('change', e => { state.animate = e.target.checked; save(); });
+  $('openStage').addEventListener('click', openStage);
+  $('closeStage').addEventListener('click', closeStage);
+  $('fsBtn').addEventListener('click', toggleFullscreen);
+  $('drawBtn').addEventListener('click', draw);
+  $('undoBtn').addEventListener('click', undo);
+  $('stageUndo').addEventListener('click', undo);
+  $('resetBtn').addEventListener('click', reset);
+  document.addEventListener('fullscreenchange', updateFsLabel);
+  document.addEventListener('webkitfullscreenchange', updateFsLabel);
+  document.addEventListener('keydown', e => {
+    if (!$('stage').classList.contains('open')) return;
+    if (e.key === 'Escape' && !fsElement()) closeStage();
+  });
+  // Keep tabs in sync if the page is open twice
+  window.addEventListener('storage', e => { if (e.key === STORAGE_KEY) { load(); renderAll(); } });
+
+  load();
+  renderAll();
+})();
+</script>
+</body>
+</html>
